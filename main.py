@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from typing import List, Dict, Optional, Union, Literal
+from typing import List, Dict, Optional, Union, Literal, List
 
 # DL modules
 from models import (
@@ -26,7 +26,7 @@ class DL_time_series_training_flow():
         self,
         num_of_time_series_sequences: int,
         num_of_time_series_features: int,
-        DL_layers: List[Dict[str, Union[int, str]]],
+        DL_layers: List[Dict[str, Union[str, List[str]]]],
         loss_func: Literal["mse", "cross_entropy"],
         optimizer: Literal["adam", "adamw"], 
         lr: float = 1e-3, 
