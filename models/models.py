@@ -123,12 +123,36 @@ class GRU_block(nn.Module):
         return
     
 class self_attention_block(nn.Module):
-    def __init__(self):
+    def __init__(
+        self,
+        embed_size: int,
+        target_length: int,
+        target_compression_length: float,
+        num_heads: int
+    ):
         super(self_attention_block, self).__init__()
+
+        self.each_compression_embed_size = target_length / target_compression_length
+
+        self.embed_size = embed_size
+
+        try:
+            embed_size *= int(self.each_compression_embed_size)
+        except: 
+            assert "target_length 一定要整除於 target_compression_length"
+                
+        self.target_compression_length = target_compression_length
+        self.model = nn.MultiheadAttention(
+            embed_dim = embed_size,
+            num_heads = num_heads
+        )
         return
     
     def forward(self, X):
-        return
+
+        X = X.reshape((-1, self.target_compression_length, self.each_compression_embed_size))
+        X = self.model(X)
+        return X.reshape((X.size()[0], -1, self.embed_size))
 
 class grouped_query_attention_block(nn.Module):
     def __init__(self):
