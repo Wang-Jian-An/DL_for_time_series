@@ -1,7 +1,8 @@
+import tqdm
 import torch
 import numpy as np
 from torch.utils.data import TensorDataset, DataLoader
-from typing import List, Dict, Optional, Union, Literal, List
+from typing import List, Dict, Optional, Union, Literal, Tuple
 
 # DL modules
 from models import (
@@ -13,6 +14,15 @@ from models import (
     xLSTM_block,
     combined_all_model_blocks
 )
+
+# DL prediction module
+from deep_learning.prediction import model_prediction
+
+# DL evaluation module
+
+
+# CPU-GPU transition function
+from deep_learning.utils import cpu_gpu_transition_for_pytorch
 
 """
 本程式旨在建立深度學習模型於時間序列訓練與預測模組，包含：
@@ -27,7 +37,7 @@ class DL_time_series_training_flow():
         num_of_time_series_sequences: int,
         num_of_time_series_features: int,
         DL_layers: List[Dict[str, Dict[str, Union[int, float, str]]]],
-        loss_func: Literal["mse", "cross_entropy"],
+        loss_func: Union[Literal["mse", "cross_entropy"], List[Literal["mse", "cross_entropy"]]],
         optimizer: Literal["adam", "adamw"], 
         epochs: int, 
         lr: float = 1e-3, 
@@ -47,6 +57,11 @@ class DL_time_series_training_flow():
         self.device = device
         self.num_of_time_series_sequences = num_of_time_series_sequences
         self.num_of_time_series_features = num_of_time_series_features
+        self.target_type = "classification" if (
+            loss_func in ["cross_entropy"]
+        ) else (
+            "regression"
+        )
         
         if DL_layers:
             self.DL_model = [
@@ -169,19 +184,28 @@ class DL_time_series_training_flow():
         elif one_model_dict.keys()[0] in "GRU":
             return GRU_block(**one_model_dict)
         
+        elif one_model_dict.keys()[0] in "attention":
+            return self_attention_block(**one_model_dict)
+        
     def call_multiple_model(self, one_multiply_model_dict: List[Dict[str, Union[int, str]]]):
         return 
 
     def model_training(
         self,
-        model,
-        loss_func,
-        optimizer,
-        train_dataloader,
-        test_dataloader,
+        model: torch.nn.modules.Module,
+        loss_func: torch.nn.modules.loss,
+        optimizer: torch.optim,
+        train_dataloader: torch.utils.data.dataloader.DataLoader,
+        test_dataloader: torch.utils.data.dataloader.DataLoader,
         epochs
     ):
         
+        """
+        The process of deep learning model training, which is as follows. 
+        1. 
+        
+        """
+
         train_loss_list = list()
         test_loss_list = list()
 
@@ -189,11 +213,105 @@ class DL_time_series_training_flow():
             train_loss = list()
             test_loss = list()
 
-            
+            model.train()
+            for X, target in train_dataloader:
+                model, loss = self.model_training_block(
+                    model = model,
+                    loss_func = loss_func,
+                    optimizer = optimizer,
+                    X = X,
+                    target = target,
+                    device = self.device
+                )
+                train_loss.append(loss)
 
-        return
+            model.eval()
+            for X, target in test_dataloader:
+                yhat = model_prediction(
+                    model = model,
+                    X = X,
+                    device = self.device
+                )
+                loss = loss_func(yhat, target)
+                test_loss.append(loss.item())
+
+            train_loss_list.append(train_loss)
+            test_loss_list.append(test_loss)
+            print(
+                "Epoch:", epoch, 
+                "Train Loss:", sum(train_loss) / train_loss.__len__(),
+                "Test Loss", sum(test_loss) / test_loss.__len__()
+            )
+        return model, train_loss_list, test_loss_list
     
-    def model_evaluation(self):
+    @cpu_gpu_transition_for_pytorch
+    def model_training_block(
+        self,
+        model: torch.nn.modules.Module, 
+        loss_func: torch.nn.modules.loss,
+        optimizer: torch.optim, 
+        X: Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]],
+        target: torch.Tensor,
+        device: str
+    ) -> Tuple[torch.nn.modules.Module, Union[int, float]]:
+        
+        # # Put data into CPU or GPU
+        # X.to(device) if (
+        #     isinstance(X, torch.Tensor)
+        # ) else (
+        #     [i.to(device) for i in X]
+        # )
+        # target.to(device)
+        
+        # Model prediction
+        yhat = model(X) if (
+            isinstance(X, torch.Tensor)
+        ) else (
+            model(*X)
+        )
+
+        loss = loss_func(yhat, target)
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+
+        # # Store loss
+        # train_loss.append(loss.cpu().item)
+
+        # # Remove data from GPU
+        # X.cpu() if (
+        #     isinstance(X, torch.Tensor)
+        # ) else (
+        #     [i.cpu() for i in X]
+        # )
+        # target.cpu()
+
+        return model, loss.item()
+
+    def model_evaluation(
+        self,
+        model: torch.nn.modules.Module,
+        dataloader: torch.utils.data.dataloader.DataLoader
+    ):
+        
+        # Model prediction
+        yhat = list()
+        target = list()
+        for X, one_target in dataloader:
+            yhat.append(
+                model_prediction(
+                    model = model,
+                    dataloader = dataloader
+                )
+            )
+            target.append(
+                one_target
+            )
+        yhat = torch.Tensor(yhat)
+        target = torch.Tensor(target)
+
+        # Model evaluation
+
         return
     
     def model_explanation(self):
