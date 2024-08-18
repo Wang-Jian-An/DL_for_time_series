@@ -72,16 +72,48 @@ def call_model(
         return self_attention_block(**layer_parameter)
 
     elif layer_name == "linear":
-        return linear_block(**layer_parameter)
+        return linear_block(**layer_parameter).model
     
     elif layer_name == "flatten":
-        return flatten_block(**layer_parameter)
+        return flatten_block(**layer_parameter).model
 
     elif layer_name == "KAN":
         pass
 
     elif layer_name == "residual":
         pass
+
+class time_series_concatenate_cross_sectional_model(nn.Module):
+    def __init__(
+        self,
+        DL_time_series_model: torch.nn.modules.Module,
+        DL_NN_model: torch.nn.modules.Module,
+        DL_decoder_model: torch.nn.modules.Module
+    ):
+        super(time_series_concatenate_cross_sectional_model, self).__init__()
+
+        self.model = nn.ModuleDict(
+            time_series_model = DL_time_series_model,
+            nn_model = DL_NN_model,
+            decoder_model = DL_decoder_model
+        )
+
+        return 
+    
+    def forward(
+        self,
+        time_series_data: torch.Tensor,
+        cross_sectional_data: torch.Tensor
+    ):
+        
+        time_series_data = self.model["time_series_model"](time_series_data)
+        cross_sectional_data = self.model["nn_model"](cross_sectional_data)
+
+        x = torch.concat([time_series_data, cross_sectional_data], axis = 0)
+
+        x = self.model["decoder_model"](x)
+
+        return x
 
 class RNN_block(nn.Module):
     def __init__(
