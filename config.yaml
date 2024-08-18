@@ -1,0 +1,8 @@
+layer_name_list: 
+  - linear
+  - residual
+  - RNN
+  - LSTM
+  - GRU
+  - 'self-attention'
+  - flatten

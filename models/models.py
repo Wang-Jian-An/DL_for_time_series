@@ -1,37 +1,87 @@
+import os
+import yaml
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Literal, List
+from typing import Literal, List, Dict, Union
+from deep_learning.models import (
+    linear_block,
+    flatten_block
+)
 
-def combined_all_model_blocks(model_list):
-    return nn.Sequential(model_list)
+with open(os.path.join(os.getcwd(), "config.yaml")) as f:
+    config = yaml.safe_load(f)
 
-class model_interaction(nn.Module):
-    def __init__(
-        self,
-        model_1,
-        model_2,
-        interaction_method: Literal["dot_product", "additive", "attention"] = "dot_product"
-    ) -> None:
-        super(model_interaction, self).__init__()
-
-        self.model_1 = model_1
-        self.model_2 = model_2
-        
-        if interaction_method == "dot_product":
-            pass
-
-        elif interaction_method == "additive":
-            pass
-
-        else:
-            pass
-        return
+def define_model(
+    model_name: str, 
+    model_list: List[
+        Dict[str, Union[List[Dict[str, Dict[str, Union[str, int, float]]]], Dict[str, Union[str, int, float]]]]
+    ]
+) -> torch.nn.modules.Module:
     
-    def forward(self, X):
+    """
+    Define deep learning model. 
+    """
 
+    class CustomModel(nn.Module):
+        def __init__(
+            self,
+            model_list: List[torch.nn.modules.Module]
+        ):
+            super(CustomModel, self).__init__()
+            self.model = nn.Sequential(*model_list)
+            return 
+        
+        def forward(self, X):
+            return self.model(X)
 
-        return 
+    model_list = [
+        call_model(
+            one_layer_dict = one_layer_dict
+        )
+        for one_layer_dict in model_list
+    ]
+    CustomModel.__name__ = model_name
+    model = CustomModel(
+        model_list = model_list
+    )
+    return model
+
+def call_model(
+    one_layer_dict: Dict[str, Dict[str, Union[str, int]]]
+) -> torch.nn.modules.Module:
+    
+    """
+    Define one of the layers in the DL model. 
+    """
+
+    layer_name, layer_parameter = next(iter(one_layer_dict.items()))
+
+    assert layer_name in config["layer_name_list"], "Layer must be one of the following: {}".format(config["layer_name_list"])
+
+    if layer_name == "RNN":
+        return RNN_block(**layer_parameter)
+
+    elif layer_name == "LSTM":
+        return LSTM_block(**layer_parameter)
+
+    elif layer_name == "GRU":
+        return GRU_block(**layer_parameter)
+
+    elif layer_name == "self-attention":
+        return self_attention_block(**layer_parameter)
+
+    elif layer_name == "linear":
+        return linear_block(**layer_parameter)
+    
+    elif layer_name == "flatten":
+        return flatten_block(**layer_parameter)
+
+    elif layer_name == "KAN":
+        pass
+
+    elif layer_name == "residual":
+        pass
 
 class RNN_block(nn.Module):
     def __init__(
@@ -42,7 +92,7 @@ class RNN_block(nn.Module):
         nonlinearity: Literal["relu", "tanh"] = "tanh",
         bidirectional: bool = True
     ):
-        super(RNN_block, self)
+        super(RNN_block, self).__init__()
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.model = nn.RNN(
@@ -60,7 +110,7 @@ class RNN_block(nn.Module):
         X: torch.Tensor
     ) -> torch.Tensor:
         
-        h0 = torch.randn(size = (self.num_layers, X.size()[0], self.hidden_size))
+        h0 = torch.randn(size = (self.num_layers * 2, X.size()[0], self.hidden_size))
         output, h = self.model(X, h0)
         return output
     
@@ -90,8 +140,8 @@ class LSTM_block(nn.Module):
         X: torch.Tensor
     ) -> torch.Tensor:
         
-        h0 = torch.randn(size = (self.num_layers, X.size()[0], self.hidden_size))
-        c0 = torch.randn(size = (self.num_layers, X.size()[0], self.hidden_size))
+        h0 = torch.randn(size = (self.num_layers * 2, X.size()[0], self.hidden_size))
+        c0 = torch.randn(size = (self.num_layers * 2, X.size()[0], self.hidden_size))
         output, (h, c) = self.model(X, (h0, c0))
         return output
     
@@ -118,7 +168,7 @@ class GRU_block(nn.Module):
     
     def forward(self, X: torch.Tensor) -> torch.Tensor:
 
-        h0 = torch.randn(size = (self.num_layers, X.size()[0], self.hidden_size))
+        h0 = torch.randn(size = (self.num_layers * 2, X.size()[0], self.hidden_size))
         output, h = self.model(X, h0)        
         return
     
@@ -132,26 +182,47 @@ class self_attention_block(nn.Module):
     ):
         super(self_attention_block, self).__init__()
 
-        self.each_compression_embed_size = target_length / target_compression_length
+        """
+        
+        Arguments 
+        -------------------
+        embed_size (int)
+            - The number of features about each time point. 
+
+        target_length (int)
+            - The number of data in the sequence. 
+        
+        target_compression_length (float)
+            - 
+
+        """
+
+        assert float(int(target_length / target_compression_length)) == target_length / target_compression_length, "target_length 一定要整除於 target_compression_length"
+
+        self.each_compression_embed_size = int(target_length / target_compression_length)
 
         self.embed_size = embed_size
-
-        try:
-            embed_size *= int(self.each_compression_embed_size)
-        except: 
-            assert "target_length 一定要整除於 target_compression_length"
+        embed_size *= self.each_compression_embed_size
                 
         self.target_compression_length = target_compression_length
         self.model = nn.MultiheadAttention(
             embed_dim = embed_size,
-            num_heads = num_heads
+            num_heads = num_heads,
+            batch_first = True
         )
         return
     
-    def forward(self, X):
+    def forward(
+        self, 
+        X: torch.Tensor
+    ):
 
-        X = X.reshape((-1, self.target_compression_length, self.each_compression_embed_size))
-        X = self.model(X)
+        X = X.reshape((-1, self.target_compression_length, self.each_compression_embed_size * self.embed_size))
+        X, _ = self.model(
+            query = X,
+            key = X,
+            value = X
+        )
         return X.reshape((X.size()[0], -1, self.embed_size))
 
 class grouped_query_attention_block(nn.Module):
