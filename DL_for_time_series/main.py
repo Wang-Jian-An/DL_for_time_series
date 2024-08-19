@@ -20,7 +20,7 @@ from deep_learning import (
     multiclass_classification_metrics,
     regression_metrics
 )
-from deep_learning.monitor.folder import folder_exists
+from monitor.folder import folder_exists
 
 """
 本程式旨在建立深度學習模型於時間序列訓練與預測模組，包含：
