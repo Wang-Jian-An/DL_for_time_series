@@ -11,11 +11,11 @@ import torch.utils.data.dataloader
 # DL modules
 from .models import define_model as define_model_for_time_series
 from .models import time_series_concatenate_cross_sectional_model
-from deep_learning.models import define_model as define_model_for_general_data
-from deep_learning.models import call_model as call_model_for_general_data
-from deep_learning.training import model_training
-from deep_learning.prediction import model_prediction
-from deep_learning.metrics import (
+from deep_learning import define_model as define_model_for_general_data
+from deep_learning import call_model as call_model_for_general_data
+from deep_learning import model_training
+from deep_learning import model_prediction
+from deep_learning import (
     binary_classification_metrics,
     multiclass_classification_metrics,
     regression_metrics
@@ -72,22 +72,22 @@ class DL_time_series_training_flow:
         print(self.model)
 
         if loss_func == "mse":
-            from deep_learning.loss_function import mse_loss
+            from deep_learning import mse_loss
             self.loss_func = mse_loss()
 
         elif loss_func == "cross_entropy":
-            from deep_learning.loss_function import cross_entropy_loss
+            from deep_learning import cross_entropy_loss
             self.loss_func = cross_entropy_loss
 
         if optimizer == "adam":
-            from deep_learning.optimizer import adam_optimizer
+            from deep_learning import adam_optimizer
             self.optimizer = adam_optimizer(
                 model = self.model,
                 lr = lr
             )
 
         elif optimizer == "adamw":
-            from deep_learning.optimizer import adamw_optimizer
+            from deep_learning import adamw_optimizer
             self.optimizer = adamw_optimizer(
                 model = self.model,
                 lr = lr
@@ -339,22 +339,22 @@ class DL_time_series_and_cross_sectional_training_flow:
 
         # Define loss function and optimizer
         if loss_func == "mse":
-            from deep_learning.loss_function import mse_loss
+            from deep_learning import mse_loss
             self.loss_func = mse_loss()
 
         elif loss_func == "cross_entropy":
-            from deep_learning.loss_function import cross_entropy_loss
+            from deep_learning import cross_entropy_loss
             self.loss_func = cross_entropy_loss
 
         if optimizer == "adam":
-            from deep_learning.optimizer import adam_optimizer
+            from deep_learning import adam_optimizer
             self.optimizer = adam_optimizer(
                 model = self.model,
                 lr = lr
             )
 
         elif optimizer == "adamw":
-            from deep_learning.optimizer import adamw_optimizer
+            from deep_learning import adamw_optimizer
             self.optimizer = adamw_optimizer(
                 model = self.model,
                 lr = lr
