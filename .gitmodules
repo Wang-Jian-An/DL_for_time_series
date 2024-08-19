@@ -1,3 +1,6 @@
 [submodule "deep_learning"]
 	path = deep_learning
 	url = git@github.com:Wang-Jian-An/deep_learning.git
+[submodule "monitor"]
+	path = monitor
+	url = git@github.com:Wang-Jian-An/monitor.git
