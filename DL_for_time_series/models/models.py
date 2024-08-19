@@ -4,10 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Literal, List, Dict, Union
-from deep_learning.models import (
-    linear_block,
-    flatten_block
-)
+from deep_learning import define_model as define_model_for_general_data
+from deep_learning import call_model as call_model_for_general_data
 
 with open(os.path.join(os.getcwd(), "config.yaml")) as f:
     config = yaml.safe_load(f)
@@ -71,11 +69,13 @@ def call_model(
     elif layer_name == "self-attention":
         return self_attention_block(**layer_parameter)
 
-    elif layer_name == "linear":
-        return linear_block(**layer_parameter).model
+    elif layer_name in ["linear", "flatten"]:
+        return call_model_for_general_data(
+            one_layer_dict = one_layer_dict
+        ).model
     
-    elif layer_name == "flatten":
-        return flatten_block(**layer_parameter).model
+    # elif layer_name == "flatten":
+    #     return 
 
     elif layer_name == "KAN":
         pass
